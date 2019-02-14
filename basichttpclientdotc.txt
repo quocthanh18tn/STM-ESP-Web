@@ -1,0 +1,68 @@
+/**
+   BasicHTTPClient.ino
+
+    Created on: 24.05.2015
+
+*/
+
+#include <ESP8266WiFi.h>
+#include <ESP8266HTTPClient.h>
+
+const char * ssid="Baodeptrai";
+const char * pass="thanhdeptrai";
+const char * url="http://192.168.137.1/test.php";
+
+String postData,station;
+
+void setup() 
+{
+ 
+  Serial.begin(115200);                 //Serial connection
+  //WiFi.persistent( false );
+  WiFi.begin(ssid, pass);   //WiFi connection
+    //Wait for the WiFI connection completion 
+    delay(1000);
+    Serial.println("....");
+  
+
+}
+ 
+void loop() 
+{
+  //uart receive data from another hardware
+  if ((Serial.available() > 0)&&(WiFi.status() == WL_CONNECTED)) 
+   {
+      //read eeprom xem co data ko
+      // neu co thi send server
+      //begin read eeprom and send
+
+
+      //end read eeprom and send
+      //neu ko co thi trong eeprom thi send bth
+      station=Serial.readStringUntil('*');
+       // wait for WiFi connection   
+          HTTPClient http;
+          http.begin( url);
+          http.addHeader("Content-Type", "application/x-www-form-urlencoded");
+          postData = "test=" + station ;
+          int httpCode = http.POST(postData);   //Send the request
+          String payload = http.getString();                  //Get the response payload
+          Serial.println("data:"+payload);
+          http.end();  //Close connection
+   }
+   else if ((WiFi.status() != WL_CONNECTED))
+   {
+    if (Serial.available() > 0)
+    {
+      //write eeprom
+       station=Serial.readStringUntil('*');
+        Serial.println(station);
+    }
+    else
+    {
+      //turn on led to warning disconect to reset mcu
+        Serial.println("just disconnected switch LPM");
+        delay(500);
+    }   
+   }
+}

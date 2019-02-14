@@ -1,0 +1,27 @@
+test wifi send http to server
+test uart from stm to esp
+need to do:
+1. understand clearly code bendmachine version2 then re-write setup by c# and then communicate DMA with stm
+then send result to esp to send http to web server     // k the viet c# roi 
+2. reduce power comsumption when dont need data send from stm in esp sleep mode //chua
+3. how to store or backup data when dont connect wifi   //eeprom+rtc
+4. how to re-connect by designed reset mode in esp   //chua
+se lam som thoi
+5. design board stm with esp then apply project
+
+
+moi vo config 
+timer2 ngat de config setup xung encoder
+sau do setup xung encoder
+timer3,4 dem xung encoder
+
+timer9 doc trang thai cam bien de control
+timer 5 xung y
+timer 7 xung x
+
+
+
+
+
+need to do in tet holoday:
+read rtc, store eeprom , send wifi,store server
