@@ -5,7 +5,7 @@
 #define		BUFF_SIZE			sizeof(txbuff)
 
 const uint8_t txbuff[] = 
-						 {'1','2','3','4','5','6','7','8','9','0','1','2','3','4','5','6','7','8','9','*'};
+						 {'1','0','1','7','9','9','9','9','9','8','8','8','8','8','7','7','7','7','7','8','8','8','8','8','*'};
 //txbuff is buffer to transmit
 // character * is character terminate transmit
 

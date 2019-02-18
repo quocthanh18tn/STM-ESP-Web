@@ -5,6 +5,14 @@
    Project: Communicate between STM + ESP + Webbrowser
 */
 
+/**
+Format:
+ Data from Wifi: Y+MSNV+Bar
+ Data from eeprom: H+MSNV+Bar+Time 
+ Data syn time: T
+
+*/
+
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
 #include <Wire.h>
@@ -17,7 +25,7 @@ void formattime(void);
 // end function user define
 
 #define EEPROM_ADDRESS 0x50       //address EEPROM when you use ESP, if you use stm32 => address must be 0xA0
-#define FORMATPRODUCT  30       //Number 20, date and time ( Month, day, hour, min, second) 10 
+#define FORMATPRODUCT  35       //Number 20, date and time ( Month, day, hour, min, second) 10, MSNV 4, 1 character classification 
 static Eeprom24C32_64 eeprom(EEPROM_ADDRESS);
 
 RTC_DS1307 RTC;
@@ -29,7 +37,7 @@ bool FlagCompareTime=false;
 String postData="",station="",payload="";
 HTTPClient http;
 int httpCode;
-byte BufferOutput[32];
+byte BufferOutput[FORMATPRODUCT];
 byte BufferInput[5]={'0','0','0','0','0'};
 word IndexBufferOutput=0;
 int  Counts=0;   
@@ -42,7 +50,7 @@ void setup()
           Serial.begin(115200);                 //Serial connection
           //WiFi.persistent( false );
           WiFi.begin(ssid, pass);   //WiFi connection          
-        //  eeprom.writeBytes(0,2 , BufferInput);
+          //eeprom.writeBytes(0,2 , BufferInput);
           delay(1000);
           
           // readbytes format: address, numerous, pointer.
@@ -55,8 +63,8 @@ void setup()
           //Serial.println(BufferOutput[IndexBufferOutput]);
           }
           delay(1000);          
-          Serial.println("..........");
-          Serial.println(Counts);
+          //Serial.println("..........");
+         // Serial.println(Counts);
 }
  
 void loop() 
@@ -66,17 +74,17 @@ void loop()
            Serial.println("..........");
            if (!FlagCompareTime && (WiFi.status() == WL_CONNECTED))
               {
-                  Serial.println("sync time");
+                 // Serial.println("sync time");
                   FlagCompareTime=true;
                   http.begin( url);
                   http.addHeader("Content-Type", "application/x-www-form-urlencoded");
                   // 1 la send de update time
-                  station="1";
+                  station="T";
                   // test la variable tren server to receive value from esp
                   postData = "test="+station;
                   httpCode = http.POST(postData);   //Send the request
                   payload = http.getString();                  //Get the response payload
-                  //Serial.println("data:"+payload);    // print to test format date time from server
+                 // Serial.println("data:"+payload);    // print to test format date time from server
                   http.end();  //Close connection 
                   String Year,Month,Day,Hour,Min,Second;
                   Year=(payload.substring(0,4));
@@ -87,52 +95,54 @@ void loop()
                   Second=(payload.substring(17));
                  // rtc.adjust(DateTime(2014, 1, 21, 3, 0, 0));
                   RTC.adjust(DateTime(Year.toInt(),Month.toInt(),Day.toInt(),Hour.toInt(),Min.toInt(),Second.toInt())); 
-                  Serial.println(" end sync time");   
+                  delay(500);
+                  
+                  //Serial.println(" end sync time");   
              }
 
           if (Counts>0 &&(WiFi.status() == WL_CONNECTED))
             {
-                 Serial.println("syn eeprom");
+               //  Serial.println("syn eeprom");
                  //Serial.println(Counts);
                  //Serial.println(Counts*32);
-                 station="";
-                 eeprom.readBytes(Counts*32, FORMATPRODUCT+1, BufferOutput);
+                 eeprom.readBytes(Counts*35, FORMATPRODUCT, BufferOutput);
+                 station="H";
                  if( BufferOutput[0]!='0')
                  {
-                  for (IndexBufferOutput=1;IndexBufferOutput<=FORMATPRODUCT+1;IndexBufferOutput++)
+                  for (IndexBufferOutput=1;IndexBufferOutput<=FORMATPRODUCT;IndexBufferOutput++)
                       {
                         if ((BufferOutput[IndexBufferOutput]-48)>=0)
                              station+=BufferOutput[IndexBufferOutput]-48;    
-                         //Serial.println("data to send:"+station);
+                   //      Serial.println("data to send:"+station);
                       }
-                  Serial.println("data to send:"+station);   
+                 // Serial.println("data to send:"+station);   
                   http.begin( url);
                   http.addHeader("Content-Type", "application/x-www-form-urlencoded");
                   postData = "test=" + station ;
                   httpCode = http.POST(postData);   //Send the request
                   payload = http.getString();                  //Get the response payload
-                  if (payload =="1")                    //return from server indicate success if = 1 or 404 : error
+                 // if (payload =="1")                    //return from server indicate success if = 1 or 404 : error
                   Serial.println("data:"+payload);
                   http.end();  //Close connection
-                  eeprom.writeBytes(Counts*32, 5 , BufferInput);     
+                  eeprom.writeBytes(Counts*35, 5 , BufferInput);     
                   //delay(1000);
                  }
-                  Serial.println("end syn eeprom");    
+                //  Serial.println("end syn eeprom");    
                   Counts--;   
                   if (Counts==0)
                   {
                   eeprom.writeBytes(0, 5 , BufferInput);
-                  Serial.println(Counts);    
+                 // Serial.println(Counts);    
                   }
           }
       
   //uart receive data from another hardware
           if ((Serial.available() > 0)&&(WiFi.status() == WL_CONNECTED)) 
            {
-              Serial.println("send data connected");
-              formattime();
+             // Serial.println("send data connected");
+              station="Y";
               station+=Serial.readStringUntil('*');
-              Serial.println("data is sned:"+station);           
+            //  Serial.println("data is sned:"+station);           
               // wait for WiFi connection   
               http.begin( url);
               http.addHeader("Content-Type", "application/x-www-form-urlencoded");
@@ -141,41 +151,42 @@ void loop()
               payload = http.getString();                  //Get the response payload
               Serial.println("data:"+payload);
               http.end();  //Close connection 
-              Serial.println("end send data connected");       
+            //  Serial.println("end send data connected");       
            }
           else if ((WiFi.status() != WL_CONNECTED))
            {
             if (Serial.available() > 0)
             {
-               Serial.println("write eeprom");   
-               station="1";
-               formattime();
+             //  Serial.println("write eeprom");   
+               station="H";
                station+=Serial.readStringUntil('*');
-               Serial.println("data to write:"+station);
+               formattime();
+             //  Serial.println("data to write:"+station);
                //write eeprom
                Counts++;
-               Serial.println(Counts);
-              byte bufferwrite[32],index;
-              for (index=0;index<32;index++)
+             //  Serial.println(Counts);
+              byte bufferwrite[35],index;
+              for (index=0;index<35;index++)
               bufferwrite[index]=station[index];
-              eeprom.writeBytes(Counts*32,FORMATPRODUCT+1 , bufferwrite);
+              eeprom.writeBytes(Counts*35,FORMATPRODUCT , bufferwrite);
               if ( Counts>=256)
                   bufferwrite[1]=Counts-256+48;
               else
                   bufferwrite[1]=48;      
               bufferwrite[0]=Counts+48;        
               eeprom.writeBytes(0,2 , bufferwrite);
-              Serial.println("end write eeprom");
+             // Serial.println("end write eeprom");
             }
             else
             {
               //turn on led to warning disconect to reset mcu
-                Serial.println("just disconnected switch LPM");
+              //  Serial.println("just disconnected switch LPM");
                 delay(500);
             }   
            }
         }
-        
+
+        //function user define -> create format time to send or write eeprom
         void formattime(void)
         {
                DateTime now = RTC.now(); // Thoi gian = thoi gian RTC hien tai
